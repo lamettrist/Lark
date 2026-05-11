@@ -25,7 +25,7 @@ export const models: modelSchema[] = [
     {
       'name': 'large',
       'id': 'large',
-      'modelID': 'openai-gpt-oss-120b',
-      'provider': digitalOceanProvider,
+      'modelID': '~anthropic/claude-haiku-latest',
+      'provider': hackClubProvider,
     },
 ]
