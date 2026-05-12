@@ -1,10 +1,8 @@
 import { models, modelSchema } from "./models";
-import { io } from "socket.io-client";
 import { MasterAgentPrompt } from "./prompts";
-import { Response, ResponseOutputItem } from "openai/resources/responses/responses.js";
-import {z} from 'zod';
-import HandleTools, { END_TURN } from "./tools";
-import { HandleToolsResponse } from "./struct";
+import { ResponseOutputItem } from "openai/resources/responses/responses.js";
+import HandleTools, { END_TURN, MasterAgentTools } from "./tools";
+import {CommunicationClient, CommunicationProtocol} from './communication.ts'
 
 /*
     So this is how Lark Begins...
@@ -12,41 +10,64 @@ import { HandleToolsResponse } from "./struct";
 */
 export class MasterAgent {
     private model: modelSchema;
-    private socket: any;
+    private socket?: CommunicationClient;
     private instructions: string;
     private messages: any[];
     private previousID: string | undefined;
     
     constructor(model: modelSchema, prompt: string = MasterAgentPrompt) {
         this.model = model;
-        this.socket = io('http://localhost:7775')
         this.instructions = prompt;
         this.messages = [];
-    }
-    /*
-        The way this'd work is we'd have a private room, right?
-        Sockets...
-    */
-    private communicate() {    
     }
 
     // Running the AI
     public async run(prompt: string) {
         let running = true;
-        // The code below is the complicated procedure to run a task. I am not going to be thinking about this anymore.
+        // Start server upon running
+        const socketServer = new CommunicationProtocol()
+        socketServer.start();
+        // Logic for the client to connect.        
+        this.socket = new CommunicationClient("MasterAgent");
+        await this.socket.connect();
+        // Logic for reading and syncing on master agent
+        this.socket.io.on('message', (message: string) => {
+
+        });
+
+        // Push the message to array
+        this.messages.push(
+            {
+                'type': 'message',
+                'content': prompt,
+                'role': 'user'
+            }
+        )
+
+        /* 
+            The code below is the complicated procedure to run a task. I am not going to be thinking about this anymore.
+            For other agent types, we shall just reuse this...
+        */
         while (running) {
-            this.messages.push(
-                {
-                    'type': 'message',
-                    'content': prompt,
-                    'role': 'user'
-                }
-            )
+            /*
+                Sync messages and pass em onto the AI
+            */
+            if (this.socket.messages.length > (this.socket.lastMessageReadIndex)) {
+                const newMessages = this.socket.messages.slice(this.socket.lastMessageReadIndex);                                
+                this.messages.push({
+                        'type': 'message',
+                        'role': 'system',
+                        'content': `NEW_MESSAGES_FROM_CHANNEL:${newMessages.join('\n')}`
+                })
+                this.socket.lastMessageReadIndex = this.socket.messages.length;
+            }
+
             const interaction = await this.model.provider?.responses.create({
                 'model': this.model.modelID,
                 'instructions': this.instructions,
                 'input': this.messages,
-                'tools': [END_TURN],
+                // @ts-expect-error Expect this error since we're leveraging a master agent.
+                'tools': MasterAgentTools,
                 'previous_response_id': this.previousID !== undefined ? this.previousID : undefined,
             })
             this.previousID = interaction?.id;
@@ -54,7 +75,7 @@ export class MasterAgent {
                 this.messages.push(item);
             })
 
-            for (const message of this.messages) {
+            for (const message of interaction?.output || []) {
                 if (message.type == 'function_call') {                    
                         const call_id = message.call_id;
                         const toolResponse = await HandleTools(message)
@@ -65,14 +86,16 @@ export class MasterAgent {
                                 'type': 'function_call_output',
                                 'output': toolResponse.output
                             })
-                            console.log(this.messages)
+                            // We call the AI again for the final response
                             const final = await this.model.provider?.responses.create({
                                 'model': this.model.modelID,
                                 'instructions': this.instructions,
                                 'input': this.messages,
                                 'previous_response_id': this.previousID !== undefined ? this.previousID : undefined,
                             })
-                            console.log(final)
+                            // Upon the end of the task, we stop the server
+                            socketServer.stop();
+                            
                             // Return output
                             return final?.output_text;
                         } else {
@@ -84,59 +107,9 @@ export class MasterAgent {
                         }
                     }
             }
-
-            // How do we get the previous interaction ID of the tool? Sort them?
-
-            // if (interaction?.tools.length != 0) {
-            //     // @ts-expect-error This'd be expected
-            //     for (let i = 0; i < interaction?.tools.length; i++) {
-            //         const tool = interaction?.tools[i]
-            //         HandleTools(tool).then(async (toolResponse: HandleToolsResponse) => {
-            //             if (toolResponse.return) {
-            //                 const final = await this.model.provider?.responses.create({
-            //                     'model': this.model.modelID,
-            //                     'instructions': this.instructions,
-            //                     'input': [{
-            //                         'call_id': this.messages[this.messages.length-1].call_id,
-            //                         'type': 'function_call_output',
-            //                         'output': toolResponse.output
-            //                     }],
-            //                     'previous_response_id': this.previousID !== undefined ? this.previousID : undefined,
-            //                 })
-            //                 console.log(final)
-            //                 // Return output
-            //                 return toolResponse.output;
-            //             }
-            //         })
-            //     }
-            // }
-
-
-            // Recognize tool calls
-            // if (interaction?.tools.length != 0) {
-            //     // Execute the tools
-            //     for (const tool of interaction.tools) {
-            //         const toolResponse = HandleTools(tool)
-            //         if (toolResponse.return) {
-            //             this.messages.push(toolInput)
-            //             console.log(this.messages)
-            //             const final = await this.model.provider?.responses.create({
-            //                 'model': this.model.modelID,
-            //                 'instructions': this.instructions,
-            //                 'input': [{
-            //                     'call_id': this.messages[this.messages.length-1].call_id,
-            //                     'type': 'function_call_output',
-            //                     'output': toolResponse.output
-            //                 }],
-            //                 'previous_response_id': this.previousID !== undefined ? this.previousID : undefined,
-            //             })
-            //             return final?.output_text //Provide the final response
-            //         }
-            //     }
-            // }
         }        
     }
 }
 
 const agent = new MasterAgent(models[0])
-console.log(await agent.run('Hello, respond with 1+1, then try calling the end tool'))
+console.log(await agent.run('Hello, research about the investments into france (CALL THE RESEARCH TOOL ONLY ONCE, OR ELSE YOU LOSE POINTS IN SCORING), then try calling the end tool'))
