@@ -25,8 +25,8 @@ export class CommunicationServer {
         this.io.on('connection', (socket: Socket) => {
             let name = socket.handshake.query.t;
             let roomID = 'main_room';
-            this.messages.push(`${name} has joined the room.`);
-            socket.to(roomID).emit('message', `${name} has joined the room.`);
+            // this.messages.push(`${name} has joined the room.`);
+            // socket.to(roomID).emit('message', `${name} has joined the room.`);
             socket.join(roomID)
 
             // Room Functions
