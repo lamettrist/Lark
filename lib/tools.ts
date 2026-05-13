@@ -126,6 +126,7 @@ export default async function HandleTools(tool: any): Promise<HandleToolsRespons
             programPauseIntent: true,
             programInstructions: 'SEND_MESSAGE',
         }    
+    // Summons stakeholders and then just returns them
     } else if (tool.name == 'summon_stakeholders') {
         const toolArguments = JSON.parse(tool.arguments);
         return {
