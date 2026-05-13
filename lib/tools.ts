@@ -1,4 +1,3 @@
-import { hackClubProvider } from './models';
 import { HandleToolsResponse } from './struct';
 
 // Definitions
@@ -30,6 +29,58 @@ export const SEARCH = {
     },
 }
 
+export const SEND_MESSAGE = {
+    'type': 'function',
+    'name': 'send_message',
+    'description': 'Send a message to the other agents/stakeholders/the master agent in the main communication channel.',
+    'parameters': {
+        'type': 'object',
+        'properties': {
+            'message': {
+                'type': 'string',
+                'description': 'The message to send',
+            }
+        },
+        'required': ['message'],
+    },
+}
+
+export const SUMMON_STAKEHOLDERS = {
+    'type': 'function',
+    'name': 'summon_stakeholders',
+    'description': 'Summon stakeholders to respond to your ideas and provide their perspective.',
+    'parameters': {
+        'type': 'object',
+        'properties': {
+            'name': {
+                'type': 'string',
+                'description': 'The name of the stakeholder to summon',
+            },
+            'description': {
+                'type': 'string',
+                'description': 'The purpose of the stakeholder/its description.',
+            },
+        },
+        'required': ['name', 'description'],
+    },
+}
+
+export const WAIT = {
+    'type': 'function',
+    'name': 'wait',
+    'description': 'Wait for a specified duration before proceeding (letting previous tasks process).',
+    'parameters': {
+        'type': 'object',
+        'properties': {
+            'duration': {
+                'type': 'number',
+                'description': 'The duration to wait for in milliseconds',
+            },
+        },
+        'required': ['duration'],
+    },
+}
+
 
 /*
     This is probably the shortest way I could've made the search tool, but it works.
@@ -57,9 +108,7 @@ async function Search(query: string) {
 
 // Tool Handler
 export default async function HandleTools(tool: any): Promise<HandleToolsResponse> {
-    console.log(tool)
     if (tool.name == 'end') {
-        console.log('Ending simulation...')
         return {return: true, output: "The simulation has terminated successfully."}
     } else if (tool.name == 'search') {
         const query = JSON.parse(tool.arguments).query;
@@ -68,7 +117,34 @@ export default async function HandleTools(tool: any): Promise<HandleToolsRespons
             return: false,
             output: `${researchResult}`
         }
+    } else if (tool.name == 'send_message') {
+        const message = JSON.parse(tool.arguments).message;
+        // Sending messages is a special thing, so we need to send it back to the agent so the program will autosend it.
+        return {
+            return: false,
+            output: message,
+            programPauseIntent: true,
+            programInstructions: 'SEND_MESSAGE',
+        }    
+    } else if (tool.name == 'summon_stakeholders') {
+        const toolArguments = JSON.parse(tool.arguments);
+        return {
+            return: false,
+            output: toolArguments,
+            programPauseIntent: true,
+            programInstructions: 'SUMMON_STAKEHOLDERS',
+        }
+    // Wait
+    } else if (tool.name == 'wait') {
+        const duration = JSON.parse(tool.arguments).duration;
+        await new Promise(resolve => setTimeout(resolve, duration));
+        console.log("Waiting");
+        return {
+            return: false,
+            output: `Successfully waited for ${duration} ms.`
+        }
     }
+
     return {
         return: false
     }
@@ -78,4 +154,13 @@ export default async function HandleTools(tool: any): Promise<HandleToolsRespons
 export const MasterAgentTools = [
     END_TURN,
     SEARCH,
+    SEND_MESSAGE,
+    SUMMON_STAKEHOLDERS,
+    WAIT
+]
+
+export const SubagentTools = [
+    END_TURN,
+    SEND_MESSAGE,
+    WAIT
 ]
