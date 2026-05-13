@@ -163,10 +163,10 @@ export class StakeholderAgent {
         this.socket.connect();
         this.socket.io.on('connect', async () => {
             this.socket.readAllMessages();
-            this.triggerInference();
+            this.triggerAgent();
         })
         io.on('message', (message: string) => {
-            this.triggerInference();
+            this.triggerAgent();
         }); // Gonna work on ts tmr. Good night!
 
     }
