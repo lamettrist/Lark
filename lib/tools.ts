@@ -1,3 +1,4 @@
+import { hackClubProvider } from './models';
 import { HandleToolsResponse } from './struct';
 
 // Definitions
@@ -84,27 +85,27 @@ export const WAIT = {
 
 /*
     This is probably the shortest way I could've made the search tool, but it works.
-    I could use Exa but I need the proxy access on HackClub, so sonar works better
+    I could use Exa but need proxy access on HackClub, so sonar works better
 */
-// async function Search(query: string) {
-    
-//     // Spin up a silly research agent for this
-//     const researchResult = await hackClubProvider.responses.create({
-//         'model': 'perplexity/sonar-pro-search',
-//         'input': `tell me more about ${query}`
-//     })
-//     console.log(researchResult.output_text);
-//     return researchResult.output_text;
-// }
-
 async function Search(query: string) {
-    return `Search results for query: ${query}
-    1.) Jimmy Vacations, a leading company in the travel industry, has recently announced a significant investment in France. The company plans to invest $500 million over the next five years to expand its operations in the country. This investment will focus on developing new travel packages, enhancing customer service, and creating job opportunities for local communities.
-
-    2.) The French government has welcomed the investment from Jimmy Vacations, stating that it will contribute to the growth of the tourism sector in France. The government has also expressed its commitment to supporting foreign investments that create jobs and boost the economy.
-
-    3.) Industry experts believe that Jimmy Vacations' investment in France will have a positive impact on the country's tourism industry. It is expected to attract more tourists to France, increase competition among travel companies, and drive innovation in the sector.`;
+    
+    // Spin up a silly research agent for this
+    const researchResult = await hackClubProvider.responses.create({
+        'model': 'perplexity/sonar-pro-search',
+        'input': `tell me more about ${query}`
+    })
+    console.log(researchResult.output_text);
+    return researchResult.output_text;
 }
+
+// async function Search(query: string) {
+//     return `Search results for query: ${query}
+//     1.) Jimmy Vacations, a leading company in the travel industry, has recently announced a significant investment in France. The company plans to invest $500 million over the next five years to expand its operations in the country. This investment will focus on developing new travel packages, enhancing customer service, and creating job opportunities for local communities.
+
+//     2.) The French government has welcomed the investment from Jimmy Vacations, stating that it will contribute to the growth of the tourism sector in France. The government has also expressed its commitment to supporting foreign investments that create jobs and boost the economy.
+
+//     3.) Industry experts believe that Jimmy Vacations' investment in France will have a positive impact on the country's tourism industry. It is expected to attract more tourists to France, increase competition among travel companies, and drive innovation in the sector.`;
+// }
 
 // Tool Handler
 export default async function HandleTools(tool: any): Promise<HandleToolsResponse> {

@@ -43,7 +43,6 @@ export class CommunicationServer {
 
             // Socket to readMessages
             socket.on('readMessages', () => {
-                console.log(this.messages);
                 socket.emit('bulkMessage', this.messages);
             });
 
@@ -83,18 +82,15 @@ export class CommunicationClient {
     public async connect(): Promise<void> {
         this.io.connect();
         this.io.on('connect', async () => {
-            console.log("Connected to the socket server!");
             this.io.emit('set_name', this.name);
             this.io.emit('joinRoom', "main_room");
         })
         // Event Listeners
         this.io.on('confirmation', (msg: string) => {
-            console.log("Received confirmation from server: ", msg);
         });
 
         this.io.on('message', (message: string) => {
             this.messages.push(message);
-            console.log(`Received message from server: ${message}`);
         });
         
         // Read bulk messages
@@ -126,6 +122,7 @@ export class CommunicationClient {
     }
 
     public sendMessage(msg: string) {
+        this.messages.push(`You:"${msg}"`);
         this.io.emit('message', msg);
     }
 }
