@@ -92,9 +92,7 @@ export class MasterAgent {
                             'previous_response_id': this.previousID !== undefined ? this.previousID : undefined,
                         })
                         // Stop all other agents
-                        this.stakeholders.forEach((agent: StakeholderAgent) => {
-                            agent.stop();
-                        });
+                        await Promise.all(this.stakeholders.map((agent: StakeholderAgent) => agent.stop()));
                         // Upon the end, we stop the server
                         setInterval(() => {
                             socketServer.stop();
@@ -139,8 +137,108 @@ export class MasterAgent {
 
 /*
     Stakeholder Agent Class.
-    REIMPLEMENT THIS (AGAIN). Ts encounters new errors.
+    Reimplementation of a Reimplementation 
 */
+export class StakeholderAgent {
+    private model: modelSchema;
+    private instructions: string;
+    private name: string;
+    private socket: CommunicationClient;
+    public running: boolean;
+    private messages: any[];
+    private previousID: string | undefined;
+
+    constructor(model: modelSchema, name: string, description: string) {
+        this.model = model;
+        this.instructions = StakeholderPrompt + `
+        <identity>Your name is ${name}, and your description is: ${description}.</identity>
+        `;
+        this.previousID = undefined;
+        this.running = false;
+        this.name = name;
+        this.messages = [];
+        this.socket = new CommunicationClient(`StakeholderAgent_${this.name}`);
+        this.socket.connect();
+    }
+
+    public async run(): Promise<void> {
+        console.log("Agent Spawned");
+        this.running = true;
+        while (this.running) {
+            if (this.socket.messages.length > (this.socket.lastMessageReadIndex)) {
+                const newMessages = this.socket.messages.slice(this.socket.lastMessageReadIndex);                                
+                this.messages.push({
+                        'type': 'message',
+                        'role': 'system',
+                        'content': `NEW_MESSAGES_FROM_CHANNEL:${newMessages.join('\n')}`
+                })
+                this.socket.lastMessageReadIndex = this.socket.messages.length;
+            }
+            let interaction = await this.model.provider?.responses.create({
+                'model': this.model.modelID,
+                'instructions': this.instructions,
+                'input': this.messages,
+                'previous_response_id': this.previousID !== undefined ? this.previousID : undefined,
+            })
+                this.previousID = interaction?.id;
+                interaction?.output.forEach((item: ResponseOutputItem) => {
+                    this.messages.push(item);
+                })
+                for (const message of interaction?.output || []) {
+                    if (message.type == 'function_call') {                    
+                        const call_id = message.call_id;
+                        const toolResponse = await HandleTools(message)
+                        if (toolResponse.return) {
+                            this.messages.push({
+                                'call_id': call_id,
+                                'type': 'function_call_output',
+                                'output': toolResponse.output
+                            });
+                            // We call the AI again for the final response
+                            const final = await this.model.provider?.responses.create({
+                                'model': this.model.modelID,
+                                'instructions': this.instructions,
+                                'input': this.messages,
+                                'previous_response_id': this.previousID !== undefined ? this.previousID : undefined,
+                            })
+                            // Emit final response
+                            this.socket?.sendMessage(final?.output_text + ". I will be signing off now, good day!");
+                            this.running = false;
+                            // Return nothing
+                            return;
+            
+                        // For special tools that interact with the communication protocol
+                        } else if (toolResponse.programPauseIntent) {
+                            // Send message to the server
+                            if (toolResponse.programInstructions == 'SEND_MESSAGE') {
+                                this.socket?.io.emit('message', toolResponse.output);
+                                this.messages.push({
+                                    'call_id': call_id,
+                                    'type': 'function_call_output',
+                                    'output': 'Message sent to the channel successfully.'
+                                });
+                                this.running = false;
+                                break;
+                            }
+                        } else {
+                            this.messages.push({
+                                'call_id': call_id,
+                                'type': 'function_call_output',
+                                'output': toolResponse.output
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    public async stop() {
+        this.running = false;
+        this.socket.disconnect();
+        this.socket.io.close();
+        this.model = undefined as any;
+    }
+}
+
 // export class StakeholderAgent {
 //     private model: modelSchema;
 //     private instructions: string;

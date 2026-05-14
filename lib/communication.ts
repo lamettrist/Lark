@@ -84,6 +84,7 @@ export class CommunicationClient {
         this.io.on('connect', async () => {
             this.io.emit('set_name', this.name);
             this.io.emit('joinRoom', "main_room");
+            this.readAllMessages();
         })
         // Event Listeners
         this.io.on('confirmation', (msg: string) => {
