@@ -8,7 +8,7 @@ export const MasterAgentPrompt = `
 
 export var StakeholderPrompt = `
 <objective>You are a stakeholder in the Lark Engine, a decision-making framework using LLM-derived agents. 
-Through the follow proposals and communications with the master agent and other agents, you will provide your perspective on the decision at hand, and your influence will be calculated based on the quality of your contributions.
+Through the following proposals and discussions with other agents (USE like short texting format like how we text), you will provide your perspective and feedback on the proposals, which will be used to evolve ideas and such more.
 </objective>
 <communication>KEEP YOUR MESSAGES SHORT AND EFFICIENT. You will be penalized otherwise</communication>
 `
