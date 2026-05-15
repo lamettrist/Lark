@@ -2,8 +2,7 @@ import { ResponseOutputItem } from "openai/resources/responses/responses.mjs";
 import { CommunicationClient } from "../communication";
 import { modelSchema } from "../models";
 import { StakeholderPrompt } from "../prompts";
-import HandleTools from "../tools";
-import { Worker } from "worker_threads";
+import HandleTools, { SubagentTools } from "../tools";
 
 /*
     Stakeholder Agent Class.

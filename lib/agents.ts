@@ -3,6 +3,7 @@ import { MasterAgentPrompt, StakeholderPrompt } from "./prompts";
 import { ResponseOutputItem } from "openai/resources/responses/responses.js";
 import HandleTools, { MasterAgentTools, SubagentTools } from "./tools";
 import {CommunicationClient, CommunicationServer} from './communication.ts'
+import { Worker } from "worker_threads";
 
 /*
     So this is how Lark Begins...
