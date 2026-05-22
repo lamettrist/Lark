@@ -4,12 +4,15 @@
 */
 
 export const config = {
-    'constants': {
-        'rho': .55,
-        'p0': .76,
-        'tau': .26,
-        'gamma': .3,
-        'lambda': .1,
-        'maxTokens': 500,
-    },
+  constants: {
+    rho: 0.55,
+    p0: 0.76,
+    tau: 0.26,
+    gamma: 0.3,
+    lambda: 0.1,
+    maxTokens: 500,
+  },
+  evolutionarySettings: {
+    maxGenerations: 5,
+  },
 };
