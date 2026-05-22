@@ -1,9 +1,10 @@
 import { models, modelSchema } from "./models";
 import { MasterAgentPrompt, StakeholderPrompt } from "./prompts";
 import { ResponseOutputItem } from "openai/resources/responses/responses.js";
-import HandleTools, { MasterAgentTools, SubagentTools } from "./tools";
+import HandleTools, { MasterAgentTools } from "./tools";
 import {CommunicationClient, CommunicationServer} from './communication.ts'
 import { Worker } from "worker_threads";
+import { Evolution } from "./evolution/evolution.ts";
 
 /*
     So this is how Lark Begins...
@@ -67,17 +68,24 @@ export class MasterAgent {
                 // @ts-expect-error Expect this error since we're leveraging a master agent.
                 'tools': MasterAgentTools,
                 'previous_response_id': this.previousID !== undefined ? this.previousID : undefined,
+                'reasoning': {
+                    'effort': 'medium'
+                }
             })
             this.previousID = interaction?.id;
             interaction?.output.forEach((item: ResponseOutputItem) => {
                 this.messages.push(item);
             })
+            // console.log(JSON.stringify(interaction?.output))
 
-
+            let madeFunctionCall = false;
             for (const message of interaction?.output || []) {
                 if (message.type == 'function_call') {                    
-                    const call_id = message.call_id;
-                    const toolResponse = await HandleTools(message)
+                    madeFunctionCall = true;
+                    const call_id = message.call_id;    // What type is message/..                 
+                    // However if name is start_evolution, we must pass more stuff...
+                    let toolResponse = await HandleTools(message);
+                    // Handle specific cases
                     if (toolResponse.return) {
                         running = false;
                         this.messages.push({
@@ -98,7 +106,6 @@ export class MasterAgent {
                         setInterval(() => {
                             socketServer.stop();
                         }, 1000);
-                        console.log("Somebody told me to say this")
                         // Return output
                         return final?.output_text;
                     // For special tools that interact with the communication protocol
@@ -116,8 +123,11 @@ export class MasterAgent {
                         } else if (toolResponse.programInstructions == 'SUMMON_STAKEHOLDERS') {
                             const worker = new Worker('./lib/stakeholders/worker.ts');
                             worker.postMessage({
-                                'name': toolResponse.output.name,
-                                'description': toolResponse.output.description,
+                                'data': {
+                                    'name': toolResponse.output.name,
+                                    'description': toolResponse.output.description,
+                                    'influenceWeight': toolResponse.output.influenceWeight
+                                },
                                 'type': 'INIT'
                             });
                             this.stakeholders.push(worker);
@@ -127,6 +137,9 @@ export class MasterAgent {
                                 'type': 'function_call_output',
                                 'output': `Summoned ${toolResponse.output.name} successfully.`
                             })
+                        } else if (toolResponse.programInstructions == 'START_EVOLUTION') {
+                            const evolution = new Evolution(toolResponse.output?.context, toolResponse.output?.strategies, this.stakeholders);
+                            await evolution.start();
                         }
                     } else {
                         this.messages.push({
@@ -135,12 +148,23 @@ export class MasterAgent {
                             'output': toolResponse.output
                         })
                     }
+                } else {
+                    // Check if there are NO tool calls at all
+                    if (!interaction?.output.some((output: any) => output.type === 'function_call')) {
+                        // Return final message
+                        return interaction?.output_text;
+                    }
                 }
+            }
+
+            if (!madeFunctionCall && interaction?.output_text) {
+                this.socket?.io.emit('message', interaction.output_text);
+                // Sleep using wait implicitly so it doesn't spin infinitely
+                await new Promise(r => setTimeout(r, 4000));
             }
         }
     }
 }
 
-
 const agent = new MasterAgent(models[0])
-console.log(await agent.run('Hi Lark! Could you tell me if my idea of implementing a carbon tax is good or not? Spawn two stakeholders.'));
+console.log(await agent.run('Hi Lark! Could you call the start_evolution tool directly and use mock data? This is for testing. Js do something for partnership w/Google. FIRST, create 2 stakeholders but don\'t talk with them.'));

@@ -1,3 +1,4 @@
+import { Evolution } from './evolution/evolution';
 import { hackClubProvider } from './models';
 import { HandleToolsResponse } from './struct';
 
@@ -61,8 +62,12 @@ export const SUMMON_STAKEHOLDERS = {
                 'type': 'string',
                 'description': 'The purpose of the stakeholder/its description.',
             },
+            'influenceWeight': {
+                'type': 'number',
+                'description': 'The weight of the stakeholder\'s influence throughout the decision-making process (only during the evolution process)',
+            }
         },
-        'required': ['name', 'description'],
+        'required': ['name', 'description', 'influenceWeight'],
     },
 }
 
@@ -82,6 +87,28 @@ export const WAIT = {
     },
 }
 
+export const START_EVOLUTION = {
+    'type': 'function',
+    'name': 'start_evolution',
+    'description': 'Begin the evolution process with the strategies and context you provide (strategies must be different and context includes stakeholder attitudes). The stakeholders will also automatically be passed to run and interact with the evolution process (MAKE SURE TO CREATE THEM).',
+    'parameters': {
+        'type': 'object',
+        'properties': {
+            'context': {
+                'type': 'string',
+                'description': 'The context for the evolution process',
+            },
+            'strategies': {
+                'type': 'array',
+                'items': {
+                    'type': 'string',
+                }
+            }
+        },
+        'required': ['context', 'strategies'],
+    },
+}
+
 
 /*
     This is probably the shortest way I could've made the search tool, but it works.
@@ -94,7 +121,6 @@ async function Search(query: string) {
         'model': 'perplexity/sonar-pro-search',
         'input': `tell me more about ${query}`
     })
-    console.log(researchResult.output_text);
     return researchResult.output_text;
 }
 
@@ -140,10 +166,20 @@ export default async function HandleTools(tool: any): Promise<HandleToolsRespons
     } else if (tool.name == 'wait') {
         const duration = JSON.parse(tool.arguments).duration;
         await new Promise(resolve => setTimeout(resolve, duration));
-        console.log("Waiting");
         return {
             return: false,
             output: `Successfully waited for ${duration} ms.`
+        }
+    } else if (tool.name == 'start_evolution') {
+        const data = JSON.parse(tool.arguments);
+        return {
+            return: false,
+            programPauseIntent: true,
+            programInstructions: 'START_EVOLUTION',
+            output: {
+                'context': data?.context,
+                'strategies': data?.strategies,
+            }
         }
     }
 
@@ -158,11 +194,17 @@ export const MasterAgentTools = [
     SEARCH,
     SEND_MESSAGE,
     SUMMON_STAKEHOLDERS,
-    WAIT
+    WAIT,
+    START_EVOLUTION
 ]
 
 export const SubagentTools = [
     END_TURN,
     SEND_MESSAGE,
     WAIT
+]
+
+export const PlasticityTools = [
+    END_TURN,
+    SEARCH,
 ]

@@ -36,7 +36,6 @@ export class CommunicationServer {
             });
 
             socket.on('message', (msg: string) => {
-                console.log(`Received message from ${name}: ${msg}`);
                 this.messages.push(`${name}:"${msg}"`);
                 socket.to(roomID).emit('message', `${name}:"${msg}"`);
             });

@@ -9,8 +9,6 @@ import HandleTools, { SubagentTools } from "../tools";
     Reimplementation of a Reimplementation 
 */
 export class StakeholderAgent {
-    private static globalRunning = false;
-    
     private model: modelSchema;
     private instructions: string;
     private name: string;
@@ -21,9 +19,10 @@ export class StakeholderAgent {
     private systemStop: boolean;
     private previousID: string | undefined;
     private toolRunning: boolean;
+    private running: boolean;
+    private influenceWeight: number;
 
-
-    constructor(model: modelSchema, name: string, description: string) {
+    constructor(model: modelSchema, name: string, description: string, influenceWeight: number) {
         this.model = model;
         this.instructions = StakeholderPrompt + `
         <identity>Your name is ${name}, and your description is ${description}.</identity>
@@ -34,6 +33,8 @@ export class StakeholderAgent {
         this.messages = [];
         this.socket = new CommunicationClient(`StakeholderAgent_${this.name}`);
         this.previousID = undefined;
+        this.influenceWeight = influenceWeight;
+        this.running = false;
         this.toolRunning = true;
     }
 
@@ -49,13 +50,11 @@ export class StakeholderAgent {
         })
         io.on('message', (message: string) => {
             this.socket.readAllMessages();
-            if (StakeholderAgent.globalRunning) {
-                this.messageQueue.push(message);
-            } else {
-                // why is this a condition
-                StakeholderAgent.globalRunning = true;
-                this.triggerAgent();
+            this.messageQueue.push(message);
+            if (!this.running) {
+                this.running = true;
                 this.toolRunning = true;
+                void this.triggerAgent();
             }
         });
     }
@@ -68,6 +67,7 @@ export class StakeholderAgent {
     }
 
     private async triggerAgent() {
+            this.toolRunning = true;
             while (this.toolRunning && !this.systemStop) {
                 if (this.socket.messages.length > (this.socket.lastMessageReadIndex)) {
                     const newMessages = this.socket.messages.slice(this.socket.lastMessageReadIndex);                                
@@ -90,8 +90,11 @@ export class StakeholderAgent {
                 interaction?.output.forEach((item: ResponseOutputItem) => {
                     this.messages.push(item);
                 })
+
+                let madeFunctionCall = false;
                 for (const message of interaction?.output || []) {
                     if (message.type == 'function_call') {                    
+                        madeFunctionCall = true;
                         const call_id = message.call_id;
                         const toolResponse = await HandleTools(message)
                         if (toolResponse.return) {
@@ -134,12 +137,52 @@ export class StakeholderAgent {
                         }
                     }
                 }
+                
+                if (!madeFunctionCall && interaction?.output_text) {
+                    this.socket?.io.emit('message', interaction.output_text);
+                    this.toolRunning = false;
+                }
+
+                if (this.messageQueue.length > 0 || (madeFunctionCall && this.toolRunning)) {
+                    this.messageQueue.length = 0;
+                    this.toolRunning = true;
+                    continue;
+                }
+                break;
             }
-        StakeholderAgent.globalRunning = false;
-        // process queue
-        if (this.messageQueue.length > 0) {
-            this.messageQueue.shift();
-            await this.triggerAgent();
+        this.running = false;
+        if (!this.systemStop && this.messageQueue.length > 0) {
+            this.messageQueue.length = 0;
+            this.running = true;
+            this.toolRunning = true;
+            void this.triggerAgent();
         }
+    }
+
+    // Mass rankings
+    public async rankStrategies(strategies: string[]) {
+        // Lwk a part of our cost-cutting measures...
+        // Could use a more expensive method but this is quicker for us...
+        this.messages.push({
+                'type': 'message',
+                'role': 'developer',
+                'content': `Hello ${this.name},
+                Now your task is to rank the following strategies in an array based on the first index being highest rated to last being lowest rated USING the IDs associated with the strategies: ${strategies}.
+                In favor of brevity, please only respond with an array IN THE FOLLOWING FORMAT, no markdown or anything else: "ID_1, ID_2, ID_3"
+                `
+        })
+        const interaction = await this.model.provider?.responses.create({
+            'model': this.model.modelID,
+            'instructions': this.instructions,
+            'input': this.messages,
+        })
+        
+        this.previousID = interaction?.id;
+        const array = interaction?.output_text.split(', ');
+        // Return the rankings
+        return {
+            'rankings': array,
+            'influenceWeight': this.influenceWeight
+        };
     }
 }
