@@ -30,4 +30,10 @@ export const models: modelSchema[] = [
     modelID: "~anthropic/claude-haiku-latest",
     provider: hackClubProvider,
   },
+  {
+    name: "judge",
+    id: "judge",
+    modelID: "deepseek/deepseek-v4-flash:free",
+    provider: hackClubProvider,
+  },
 ];

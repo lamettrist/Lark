@@ -3,7 +3,7 @@
     This is where we configure the lark framework and make it better for everyone to use.
 */
 
-export const config = {
+export var config = {
   constants: {
     rho: 0.55,
     p0: 0.76,
@@ -15,4 +15,5 @@ export const config = {
   evolutionarySettings: {
     maxGenerations: 5,
   },
+  storeUsage: true,
 };

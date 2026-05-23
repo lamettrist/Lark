@@ -6,6 +6,9 @@ import { CommunicationClient, CommunicationServer } from "./communication.ts";
 import { Worker } from "worker_threads";
 import { Evolution } from "./evolution/evolution.ts";
 import { OutputMetrics } from "./struct.ts";
+import { config } from "../config.ts";
+import { db } from "./db/db.ts";
+import { tokenUsage } from "./db/schema.ts";
 
 /*
     So this is how Lark Begins...
@@ -79,8 +82,13 @@ export class MasterAgent {
       interaction?.output.forEach((item: ResponseOutputItem) => {
         this.messages.push(item);
       });
-
-      console.log(JSON.stringify(interaction));
+      if (config.storeUsage) {
+        await db.insert(tokenUsage).values({
+          cost: interaction?.usage?.cost,
+          inputTokens: interaction?.usage?.input_tokens,
+          totalTokens: interaction?.usage?.total_tokens,
+        });
+      }
       let madeFunctionCall = false;
       for (const message of interaction?.output || []) {
         if (message.type == "function_call") {
@@ -189,5 +197,5 @@ export class MasterAgent {
   }
 }
 
-const agent = new MasterAgent(models[0]);
-await agent.run("Say hi!");
+// const agent = new MasterAgent(models[0]);
+// await agent.run("Say hi!");
