@@ -2,6 +2,7 @@ import { Worker } from "worker_threads";
 import { config } from "../../config";
 import { EvoMath } from "./math";
 import { models } from "../models";
+
 import {
   ResponseInputItem,
   Tool,
@@ -214,8 +215,8 @@ export class Evolution {
   }
 
   private async inference(instructions: string, tools: Tool[]) {
+    let messages: ResponseInputItem[] = [];
     while (true) {
-      const messages: ResponseInputItem[] = [];
       const modelResponse = await models[0].provider?.responses.create({
         model: models[0].modelID,
         instructions:

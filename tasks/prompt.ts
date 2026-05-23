@@ -12,3 +12,10 @@ Once you are done receiving the responses, rank them each from 1-10 (from least 
 Respond ONLY with your ranking per model and yeah.
 </judging-task>
 `;
+
+export const AutogenLLMPrompt = `
+<name>You are a decision-making agent responsible for decision-making</name>
+<purpose>Given a question and using the tools available to you, reason through and provide a coherent and complete response.
+Once you are satisfied with your reasoning and research, you **MUST** call the END_TURN tool to end your turn.
+</purpose>
+`;

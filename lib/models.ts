@@ -33,7 +33,7 @@ export const models: modelSchema[] = [
   {
     name: "judge",
     id: "judge",
-    modelID: "deepseek/deepseek-v4-flash:free",
+    modelID: "qwen/qwen3.7-max",
     provider: hackClubProvider,
   },
 ];

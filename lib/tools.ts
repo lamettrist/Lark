@@ -257,3 +257,5 @@ export const MasterAgentTools = [
 export const SubagentTools = [END_TURN, SEND_MESSAGE, WAIT];
 
 export const PlasticityTools = [END_TURN, SEARCH];
+
+export const EvaluationTools = [END_TURN, SEARCH];

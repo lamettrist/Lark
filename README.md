@@ -17,7 +17,7 @@ While Lark is a major model, it is broken down into specific custom-made compone
 Setting up Lark is relatively simple. All you need is [bun](https://bun.sh) and a [Hack Club API Key](https://ai.hackclub.com), put it in the .env (see .env.example), and run ```bun setup```. We'll take care of the rest.
 
 ## Examples of Usage
-To use Lark, all you need is to import the Master Agent from the ``lib/agents.ts`` file, create a new class, and run agent.run, as the following:
+To use Lark, all you need is to import the Master Agent (and pass the model) from the ``lib/agents.ts`` file, create a new class, and run agent.run, as the following:
 
 ```javascript
 import { MasterAgent } from './lib/agents.ts';
