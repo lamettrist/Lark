@@ -14,7 +14,7 @@ While Lark is a major model, it is broken down into specific custom-made compone
 * Evolutionary Processes: Backbone of the platform, handles everything related to the biological functions (much like AlphaEvolve), makes those adjustments, and also reports them back to the Master Agent and Stakeholders through the server.
 
 ## Setup
-Setting up Lark is relatively simple. All you need is [bun](https://bun.sh) and a [Hack Club API Key](https://ai.hackclub.com), put it in the .env (see .env.example), and run ```bun setup```. We'll take care of the rest.
+Setting up Lark is relatively simple. All you need is [bun](https://bun.sh) and a [Hack Club API Key](https://ai.hackclub.com), put the latter in the .env (see .env.example), and run ```bun setup```. We'll take care of the rest.
 
 ## Examples of Usage
 To use Lark, all you need is to import the Master Agent (and pass the model) from the ``lib/agents.ts`` file, create a new class, and run agent.run, as the following:

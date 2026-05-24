@@ -1,5 +1,5 @@
 /*
-  Benchmarking software for the Lark framework that leverages tasks,
+  Benchmarking script for the Lark framework that leverages tasks,
   functions that have a default export and are automatically imported and executed
 */
 import { Glob } from "bun";
@@ -19,5 +19,6 @@ const scannedFiles = await Array.fromAsync(
 // Loader
 for (const file of scannedFiles) {
   const task = await import(`./benchmarking/tasks/${file}`);
-  console.log(await task.default()); // FINALLY IT WORKS (one much imagine me happy after getting this to work)
+  Bun.write(`./results/${file.split(".ts")[0]}`, `${await task.default()}`);
+  // FINALLY IT WORKS (one much imagine me happy after getting this to work)
 }

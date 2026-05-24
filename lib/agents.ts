@@ -5,7 +5,6 @@ import HandleTools, { MasterAgentTools } from "./tools";
 import { CommunicationClient, CommunicationServer } from "./communication.ts";
 import { Worker } from "worker_threads";
 import { Evolution } from "./evolution/evolution.ts";
-import { OutputMetrics } from "./struct.ts";
 import { config } from "../config.ts";
 import { db } from "./db/db.ts";
 import { tokenUsage } from "./db/schema.ts";
@@ -22,23 +21,24 @@ export class MasterAgent {
   private previousID: string | undefined;
   private stakeholders: Worker[];
   private evolution: Evolution | undefined;
+  private socketServer: CommunicationServer;
 
   constructor(model: modelSchema, prompt: string = MasterAgentPrompt) {
     this.model = model;
     this.instructions = prompt;
     this.messages = [];
     this.stakeholders = [];
+    // Start server upon running
+    this.socketServer = new CommunicationServer();
+    this.socketServer.start();
+    this.socket = new CommunicationClient("MasterAgent");
+    this.socket.connect();
   }
 
   // Running the AI
   public async run(prompt: string) {
     let running = true;
-    // Start server upon running
-    const socketServer = new CommunicationServer();
-    socketServer.start();
     // Logic for the client to connect.
-    this.socket = new CommunicationClient("MasterAgent");
-    await this.socket.connect();
     // Push the message to array
     this.messages.push({
       type: "message",
@@ -118,7 +118,7 @@ export class MasterAgent {
             );
             // Upon the end, we stop the server
             setInterval(() => {
-              socketServer.stop();
+              this.socketServer.stop();
             }, 1000);
             // Return output
             return final?.output_text;
