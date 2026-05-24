@@ -13,6 +13,8 @@ While Lark is a major model, it is broken down into specific custom-made compone
 * Communication Server: Handles communication between each of the clients (master agent, stakeholder, evolutionary processes) via sockets
 * Evolutionary Processes: Backbone of the platform, handles everything related to the biological functions (much like AlphaEvolve), makes those adjustments, and also reports them back to the Master Agent and Stakeholders through the server.
 
+But to top it all off, all tasks for the benchmark are autodiscovered and executed by the benchmark script to ensure the code can be reproducible with new modules.
+
 ## Setup
 Setting up Lark is relatively simple. All you need is [bun](https://bun.sh) and a [Hack Club API Key](https://ai.hackclub.com), put the latter in the .env (see .env.example), and run ```bun setup```. We'll take care of the rest.
 
@@ -24,6 +26,8 @@ import { MasterAgent } from './lib/agents.ts';
 const agent = new MasterAgent(models[0]);
 console.log(await agent.run("Say hi!"));
 ```
+
+Otherwise, try playing around with the inference script!
 
 ## Benchmarking
 While benchmarking the platform is a necessity to understand its performance compared to other models, all our tasks are currently it is currently in development. However, we plan to start from the AutoEval with an LLM-as-a-judge and some models, which can be seen and modified in ``tasks/evaluationModels.ts``.
