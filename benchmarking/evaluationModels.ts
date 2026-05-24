@@ -12,4 +12,5 @@ export const evaluatedModels = [
   {
     modelID: "lark",
   },
+  // Add some more models here!
 ];

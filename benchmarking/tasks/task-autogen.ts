@@ -2,21 +2,21 @@
   Autogen Tasks & Ranking w/one-function
 */
 import { ResponseInput } from "openai/resources/responses/responses.js";
-import { models } from "../lib/models";
-import { AutogenLLMPrompt, AutogenPrompt } from "./prompt";
-import { evaluatedModels } from "./evaluationModels";
-import { MasterAgent } from "../lib/agents";
-import HandleTools, { EvaluationTools } from "../lib/tools";
+import { models } from "../../lib/models";
+import { AutogenLLMPrompt, AutogenPrompt } from "../prompt";
+import { evaluatedModels } from "../evaluationModels";
+import { MasterAgent } from "../../lib/agents";
+import HandleTools, { EvaluationTools } from "../../lib/tools";
 
 /*
   One of our tasks which leverages an LLM-as-a-judge
 */
-export async function Autojudge() {
-  let scoreSheet: [];
+export default async function Autojudge() {
+  let scoreSheet = []; // init here
   let messages: ResponseInput = [];
   messages.push({
     role: "system",
-    content: "You may now begin with the question.",
+    content: "You may now begin with a question.",
   });
   const question = (
     await models[1].provider.responses.create({
@@ -28,7 +28,6 @@ export async function Autojudge() {
       },
     })
   ).output_text;
-  console.log(question);
   for (const model of evaluatedModels) {
     let localMessages: ResponseInput = [];
     localMessages.push({
@@ -40,14 +39,19 @@ export async function Autojudge() {
     if (model.modelID == "lark") {
       aiResponse = await new MasterAgent(models[0]).run(question);
     } else {
-      while (true) {
+      let isRunning = true;
+      while (isRunning) {
         const interaction = await model.provider?.responses.create({
           instructions: AutogenLLMPrompt,
           input: localMessages,
           model: model.modelID,
           previous_response_id: previousID,
           tools: EvaluationTools,
+          reasoning: {
+            'effort': 'medium'
+          }
         });
+        console.log(interaction.output);
         previousID = interaction?.id;
         localMessages.push(...interaction?.output);
         for (let i = 0; i < interaction?.output.length; i++) {
@@ -72,9 +76,10 @@ export async function Autojudge() {
                 input: localMessages,
                 model: model.modelID,
                 previous_response_id: previousID,
-                tools: EvaluationTools,
               });
               aiResponse = finalInteraction?.output_text;
+              isRunning = false;
+              continue;
             } else {
               messages.push({
                 type: "function_call_output",
@@ -89,7 +94,7 @@ export async function Autojudge() {
     // Synthesize scoring
     messages.push({
       role: "system",
-      content: `We have the final response from the agent: ${aiResponse}. Please respond with a rating (and ONLY the rating) from 1-10.`,
+      content: `We have the final response from the agent: ${aiResponse.toString()}. Please respond with a rating (and ONLY the rating) from 1-10.`,
     });
     const finalScore = (
       await models[1].provider.responses.create({
@@ -106,6 +111,5 @@ export async function Autojudge() {
       'score': finalScore
     });
   }
+  return scoreSheet;
 }
-
-Autojudge();
