@@ -1,10 +1,14 @@
 # Lark
 *A better, more refined version of the Lark Engine*
 
-
 > "Lark is a biologically inspired decision-making framework that couples LLM-driven reasoning with an evolutionary, stakeholder-aware Multi-Agent System (MAS). To address verbosity and stakeholder trade-offs, we integrate four mechanisms: (i) plasticity, which applies concise adjustments to candidate solutions; (ii) duplication and maturation, which copy high-performing candidates and specialize them into new modules; (iii) ranked-choice stakeholder aggregation using influence-weighted Borda scoring; and (iv) compute awareness via token-based penalties that reward brevity. The system iteratively proposes diverse strategies, applies plasticity tweaks, simulates stakeholder evaluations, aggregates preferences, selects top candidates, and performs duplication/maturation while factoring compute cost into final scores."
 
 (from the abstract of the arxiv paper of the same name)
+
+## Demo
+
+To see a demo of Lark in action, please view the Demo.mov file in the examples folder.
+
 
 ## Components
 While Lark is a major model, it is broken down into specific custom-made components tailored to the framework:

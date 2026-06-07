@@ -60,11 +60,16 @@ export class StakeholderAgent {
     });
     io.on("message", (message: string) => {
       this.socket.readAllMessages();
+      
+      // CRITICAL: Filter out our own messages to prevent infinite loops
+      if (message.startsWith(`StakeholderAgent_${this.name}:`)) return;
+
       this.messageQueue.push(message);
       if (!this.running) {
         this.running = true;
-        this.toolRunning = true;
-        void this.triggerAgent();
+        // Jitter to prevent simultaneous API bursts and allow turn-taking
+        const jitter = Math.floor(Math.random() * 2000) + 800;
+        setTimeout(() => void this.triggerAgent(), jitter);
       }
     });
   }
@@ -85,10 +90,24 @@ export class StakeholderAgent {
         );
         this.messages.push({
           type: "message",
-          role: "system",
+          role: "user",
           content: `NEW_MESSAGES_FROM_CHANNEL:${newMessages.join("\n")}`,
         });
         this.socket.lastMessageReadIndex = this.socket.messages.length;
+
+        // Filter out self-messages to prevent confirming our own actions
+        const filtered = newMessages.filter(msg => !msg.startsWith(this.socket.name + ":"));
+        
+        if (filtered.length > 0) {
+            this.messages.push({
+              type: "message",
+              role: "user",
+              content: `[NEW_CHANNEL_ACTIVITY]\n${filtered.join("\n")}\n[/NEW_CHANNEL_ACTIVITY]`,
+            });
+        } else if (this.messageQueue.length === 0) {
+            // If there's no real new content from others, break the loop
+            break;
+        }
       }
       const interaction = await this.model.provider?.responses.create({
         model: this.model.modelID,
@@ -136,6 +155,7 @@ export class StakeholderAgent {
             this.socket?.sendMessage(
               final?.output_text + ". I will be signing off now, good day!",
             );
+            this.socket?.sendMessage(final?.output_text || "");
             // Return nothing
             return;
 

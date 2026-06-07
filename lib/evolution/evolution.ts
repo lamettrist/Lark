@@ -61,11 +61,11 @@ export class Evolution {
   // Start the evolution subprocess
   public async start() {
     // Check if we ready.
-    if (config.evolutionarySettings.maxGenerations > this.generation) {
+    if (this.generation > config.evolutionarySettings.maxGenerations) {
       this.communicationClient.sendMessage(`
         @Master Agent, you have exhausted the maximum number of generations. With this, you can't **run any more**. Here's the final generations' report.
         The original Strategies: ${this.strategies.toString()}, now our full dictionary (with modifications and plasticity tweaks are):
-        ${this.strategyDictionary.toString()}. We are using your provided context.
+        ${JSON.stringify(this.strategyDictionary)}. We are using your provided context.
         This is a pre-recorded message that is used in hopes to improve evolution and ideas (as with the stakeholders) such that the master agent reaches a point where it's satisfied with the responses.
       `);
       return; // End early
@@ -145,7 +145,7 @@ export class Evolution {
           this.communicationClient.sendMessage(`
             Report with evolution outcomes for generation ${this.generation}:
             The original Strategies: ${this.strategies.toString()}, now our full dictionary (with modifications and plasticity tweaks are):
-            ${this.strategyDictionary.toString()}. We are using your provided context.
+            ${JSON.stringify(this.strategyDictionary)}. We are using your provided context.
             This is a pre-recorded message that is used in hopes to improve evolution and ideas (as with the stakeholders) such that the master agent reaches a point where it's satisfied with the responses.
             @Master Agent, please decide whether to continue generating after deliberating with stakeholders, and then call the resume_evolution tool if so after calling the update_evolutionary_context tool if needed (appends to existing context of the situation).
           `);

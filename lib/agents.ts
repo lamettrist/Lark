@@ -1,4 +1,4 @@
-import { models, modelSchema } from "./models";
+import { modelSchema } from "./models";
 import { MasterAgentPrompt } from "./prompts";
 import { ResponseOutputItem } from "openai/resources/responses/responses.js";
 import HandleTools, { MasterAgentTools } from "./tools";
@@ -22,6 +22,7 @@ export class MasterAgent {
   private stakeholders: Worker[];
   private evolution: Evolution | undefined;
   private socketServer: CommunicationServer;
+  private messageQueue: string[] = [];
 
   constructor(model: modelSchema, prompt: string = MasterAgentPrompt) {
     this.model = model;
@@ -33,13 +34,17 @@ export class MasterAgent {
     this.socketServer.start();
     this.socket = new CommunicationClient("MasterAgent");
     this.socket.connect();
+
+    this.socket.io.on("message", (message: string) => {
+      this.socket?.readAllMessages();
+      if (message.startsWith("MasterAgent:")) return;
+      this.messageQueue.push(message);
+    });
   }
 
   // Running the AI
   public async run(prompt: string) {
     let running = true;
-    // Logic for the client to connect.
-    // Push the message to array
     this.messages.push({
       type: "message",
       content: prompt,
@@ -54,16 +59,19 @@ export class MasterAgent {
       /*
                 Sync messages and pass em onto the AI
       */
-      if (this.socket.messages.length > this.socket.lastMessageReadIndex) {
-        const newMessages = this.socket.messages.slice(
+      if (this.socket && this.socket.messages.length > this.socket.lastMessageReadIndex) {
+        const newMessages = this.socket?.messages.slice(
           this.socket.lastMessageReadIndex,
         );
-        this.messages.push({
-          type: "message",
-          role: "system",
-          content: `NEW_MESSAGES_FROM_CHANNEL:${newMessages.join("\n")}`,
-        });
-        this.socket.lastMessageReadIndex = this.socket.messages.length;
+        const filtered = newMessages.filter(msg => !msg.startsWith("MasterAgent:"));
+        if (filtered.length > 0) {
+          this.messages.push({
+            type: "message",
+            role: "user",
+            content: `NEW_MESSAGES_FROM_CHANNEL:${filtered.join("\n")}`,
+          });
+        }
+        this.socket.lastMessageReadIndex = this.socket?.messages.length;
       }
 
       const interaction = await this.model.provider?.responses.create({
@@ -93,47 +101,27 @@ export class MasterAgent {
       for (const message of interaction?.output || []) {
         if (message.type == "function_call") {
           madeFunctionCall = true;
-          const call_id = message.call_id; // What type is message/..
+          const call_id = message.call_id;
           // However if name is start_evolution, we must pass more stuff...
           let toolResponse = await HandleTools(message);
           // Handle specific cases
           if (toolResponse.return) {
             running = false;
-            this.messages.push({
-              call_id: call_id,
-              type: "function_call_output",
-              output: toolResponse.output,
-            });
-            // We call the AI again for the final response
             const final = await this.model.provider?.responses.create({
               model: this.model.modelID,
               instructions: this.instructions,
               input: this.messages,
-              previous_response_id:
-                this.previousID !== undefined ? this.previousID : undefined,
+              previous_response_id: this.previousID,
             });
-            // Stop all other agents
-            await Promise.all(
-              this.stakeholders.map((agent: Worker) => agent.terminate()),
-            );
-            // Upon the end, we stop the server
-            setInterval(() => {
-              this.socketServer.stop();
-            }, 1000);
-            // Return output
+            await Promise.all(this.stakeholders.map((agent: Worker) => agent.terminate()));
+            setTimeout(() => { this.socketServer.stop(); }, 2000);
             return final?.output_text;
-            // For special tools that interact with the communication protocol
+
           } else if (toolResponse.programPauseIntent) {
             // Send message to the server
             if (toolResponse.programInstructions == "SEND_MESSAGE") {
-              this.socket.io.emit("message", toolResponse);
+              this.socket?.io.emit("message", toolResponse.output);
               toolResponse.output = "Message sent to the channel successfully.";
-              // Send super customized one
-              this.messages.push({
-                call_id: call_id,
-                type: "function_call_output",
-                output: `Sent desired message successfully.`,
-              });
             } else if (
               toolResponse.programInstructions == "SUMMON_STAKEHOLDERS"
             ) {
@@ -147,12 +135,7 @@ export class MasterAgent {
                 type: "INIT",
               });
               this.stakeholders.push(worker);
-              // Send super customized one
-              this.messages.push({
-                call_id: call_id,
-                type: "function_call_output",
-                output: `Summoned ${toolResponse.output.name} successfully.`,
-              });
+              toolResponse.output = `Summoned ${toolResponse.output.name} successfully.`;
             } else if (toolResponse.programInstructions == "START_EVOLUTION") {
               this.evolution = new Evolution(
                 toolResponse.output?.context,
@@ -160,42 +143,47 @@ export class MasterAgent {
                 this.stakeholders,
               );
               await this.evolution.start();
+              toolResponse.output = "Evolutionary process initiated.";
             } else if (toolResponse.programInstructions == "RESUME_EVOLUTION") {
-              // Work on this
               await this.evolution?.start(); // it doesnt matter this will work
-            } else if (
-              toolResponse.programInstructions == "UPDATE_EVOLUTION_CONTEXT" // Work on this
-            ) {
+              toolResponse.output = "Evolutionary process resumed.";
+            } else if (toolResponse.programInstructions == "UPDATE_EVOLUTION_CONTEXT") {
               this.evolution?.updateContext(toolResponse?.output.content);
+              toolResponse.output = "Evolutionary context updated successfully.";
             }
-          } else {
-            this.messages.push({
-              call_id: call_id,
-              type: "function_call_output",
-              output: toolResponse.output,
-            });
           }
-        } else {
-          // Check if there are NO tool calls at all
-          if (
-            !interaction?.output.some(
-              (output: any) => output.type === "function_call",
-            )
-          ) {
-            // Return final message
-            return interaction?.output_text;
-          }
+
+          this.messages.push({
+            call_id: call_id,
+            type: "function_call_output",
+            output: toolResponse.output,
+          });
         }
       }
 
-      if (!madeFunctionCall && interaction?.output_text) {
-        this.socket?.io.emit("message", interaction.output_text);
-        // Sleep using wait implicitly so it doesn't spin infinitely
-        await new Promise((r) => setTimeout(r, 4000));
+      if (!madeFunctionCall) {
+        if (interaction?.output_text) {
+          this.socket?.io.emit("message", interaction.output_text);
+        }
+        
+        await this.waitForActivity();
       }
     }
+  }
+
+  private async waitForActivity() {
+    if (this.messageQueue.length > 0) {
+        this.messageQueue = [];
+        return;
+    }
+    let elapsed = 0;
+    while (this.messageQueue.length === 0 && elapsed < 15000) {
+      await new Promise(r => setTimeout(r, 1000));
+      elapsed += 1000;
+    }
+    this.messageQueue = []; // Reset queue for next deliberation step
   }
 }
 
 // const agent = new MasterAgent(models[0]);
-// await agent.run("Say hi!");
+// await agent.run("Lark, using some stakeholders, would it be a better idea for me to use ChatGPT over Lark?");

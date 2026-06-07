@@ -36,6 +36,7 @@ export class CommunicationServer {
             });
 
             socket.on('message', (msg: string) => {
+                console.log("Received message " + msg + "from " + name);
                 this.messages.push(`${name}:"${msg}"`);
                 socket.to(roomID).emit('message', `${name}:"${msg}"`);
             });
@@ -89,10 +90,6 @@ export class CommunicationClient {
         this.io.on('confirmation', (msg: string) => {
         });
 
-        this.io.on('message', (message: string) => {
-            this.messages.push(message);
-        });
-        
         // Read bulk messages
         this.io.on('bulkMessage', (messageStore: string[]) => {
             let localMessages: string[] = [];
@@ -122,7 +119,7 @@ export class CommunicationClient {
     }
 
     public sendMessage(msg: string) {
-        this.messages.push(`You:"${msg}"`);
+        // this.messages.push(`You:"${msg}"`);
         this.io.emit('message', msg);
     }
 }
