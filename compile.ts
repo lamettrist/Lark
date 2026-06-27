@@ -2,10 +2,16 @@
     Compile the file
 */
 await Bun.build({
-  entrypoints: ['./cli.tsx'],
+  entrypoints: ['./cli.tsx', './lib/communication.ts', './lib/stakeholders/worker.ts'],
   target: 'bun',
-  outdir: './build',
-  'compile': true,
+  compile: {
+    outfile: './build/cli',
+  },
+  minify: true,
 });
-
-console.log("Compiled!");
+await Bun.build({
+  entrypoints: ['./cli.tsx', './lib/communication.ts', './lib/stakeholders/worker.ts'],
+  target: 'bun',
+  minify: true,
+});
+console.log("Compiled both binary and source to ./build");
