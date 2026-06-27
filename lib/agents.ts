@@ -81,10 +81,7 @@ export class MasterAgent {
         // @ts-expect-error Expect this error since we're leveraging a master agent.
         tools: MasterAgentTools,
         previous_response_id:
-          this.previousID !== undefined ? this.previousID : undefined,
-        reasoning: {
-          effort: "medium",
-        },
+          this.previousID !== undefined ? this.previousID : undefined,        
       });
       this.previousID = interaction?.id;
       interaction?.output.forEach((item: ResponseOutputItem) => {
@@ -107,16 +104,15 @@ export class MasterAgent {
           // Handle specific cases
           if (toolResponse.return) {
             running = false;
-            const final = await this.model.provider?.responses.create({
-              model: this.model.modelID,
-              instructions: this.instructions,
-              input: this.messages,
-              previous_response_id: this.previousID,
-            });
+            // const final = await this.model.provider?.responses.create({
+            //   model: this.model.modelID,
+            //   instructions: this.instructions,
+            //   input: this.messages,
+            //   previous_response_id: this.previousID,
+            // });
             await Promise.all(this.stakeholders.map((agent: Worker) => agent.terminate()));
             setTimeout(() => { this.socketServer.stop(); }, 2000);
-            return final?.output_text;
-
+            return interaction?.output_text;
           } else if (toolResponse.programPauseIntent) {
             // Send message to the server
             if (toolResponse.programInstructions == "SEND_MESSAGE") {
@@ -160,14 +156,16 @@ export class MasterAgent {
           });
         }
       }
-
-      if (!madeFunctionCall) {
-        if (interaction?.output_text) {
-          this.socket?.io.emit("message", interaction.output_text);
+        if (!madeFunctionCall) {
+          if (interaction?.output_text) {
+            this.socket?.io.emit("message", interaction.output_text);
+          }
+          const gotActivity = await this.waitForActivity();
+          if (!gotActivity) {
+            running = false; // truly idle — stop, don't re-prompt the model with stale context
+            return interaction?.output_text;
+          }
         }
-        
-        await this.waitForActivity();
-      }
     }
   }
 

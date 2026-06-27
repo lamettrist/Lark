@@ -13,10 +13,10 @@ export interface modelSchema {
   maxTokens?: number;
 }
 
-const digitalOceanProvider = new OpenAI({
-  apiKey: process?.env.DIGITALOCEAN_KEY,
-  baseURL: "https://inference.do-ai.run/v1",
-});
+// const digitalOceanProvider = new OpenAI({
+//   apiKey: process?.env.DIGITALOCEAN_KEY,
+//   baseURL: "https://inference.do-ai.run/v1",
+// });
 
 export const hackClubProvider = new OpenAI({
   baseURL: "https://ai.hackclub.com/proxy/v1",
@@ -25,9 +25,9 @@ export const hackClubProvider = new OpenAI({
 
 export const models: modelSchema[] = [
   {
-    name: "large",
-    id: "large",
-    modelID: "openai/gpt-oss-120b",
+    name: "fast",
+    id: "fast",
+    modelID: "~anthropic/claude-haiku-latest",
     provider: hackClubProvider,
   },
   {

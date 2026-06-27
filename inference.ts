@@ -8,6 +8,7 @@ import { sum } from "drizzle-orm";
 // Delete all files in DB first
 await db.delete(tokenUsage);
 
+
 console.log(
   styleText(
     "red",

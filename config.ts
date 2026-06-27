@@ -15,5 +15,6 @@ export var config = {
   evolutionarySettings: {
     maxGenerations: 5,
   },
-  storeUsage: false,
+  storeUsage: true,
+  enhancedLogging: true,
 };

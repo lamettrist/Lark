@@ -46,6 +46,9 @@ export class StakeholderAgent {
     this.influenceWeight = influenceWeight;
     this.running = false;
     this.toolRunning = true;
+    if (config.enhancedLogging) {
+      console.log(`[Stakeholder] Spawned ${this.name}`);
+    }
   }
 
   /*

@@ -113,9 +113,6 @@ export class Evolution {
                   `<scenario-context>${this.context}</scenario-context>`,
                 previous_response_id: this.previousResponseID,
                 input: mutatedData.strategy,
-                reasoning: {
-                  effort: "medium",
-                },
               });
               if (config.storeUsage) {
                 await db.insert(tokenUsage).values({
