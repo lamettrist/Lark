@@ -11,7 +11,7 @@ From asking Lark: "Would it be a better idea for me to use ChatGPT over Lark?"
 
 ## Demo
 
-To see a demo of Lark in action, please view the [Demo.mov](https://github.com/lamettrist/Lark/raw/refs/heads/main/example/Demo.mov) file in the examples folder (or follow the link to be sent to the video.
+To see a demo of Lark in action, please view the [Demo.mov](https://github.com/lamettrist/Lark/raw/refs/heads/main/example/Demo.mov) file in the examples folder. Otherwise, download and play with the CLI at [latest relese](https://github.com/lamettrist/Lark/releases/latest)!
 
 
 ## Components
