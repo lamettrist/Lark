@@ -6,6 +6,7 @@ await Bun.build({
   target: 'bun',
   outdir: './build',
   'compile': true,
+  'bytecode': true,
 });
 
 console.log("Compiled!");
